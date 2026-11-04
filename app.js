@@ -58,20 +58,28 @@ async function initAuth() {
 }
 
 function updateAuthUI() {
+  const landingView = document.getElementById('landingAuthView');
+  const appContainer = document.getElementById('appContainer');
   const displayNameEl = document.getElementById('userDisplayName');
   const statusSubEl = document.getElementById('userStatusSub');
   const actionBtn = document.getElementById('authActionBtn');
   const avatarCircle = document.getElementById('userAvatarCircle');
 
   if (currentUser) {
+    if (landingView) landingView.classList.add('hidden');
+    if (appContainer) appContainer.classList.remove('hidden');
+
     const shortName = currentUser.email.split('@')[0];
     if (displayNameEl) displayNameEl.textContent = shortName;
     if (statusSubEl) statusSubEl.textContent = 'Account Synced';
     if (actionBtn) actionBtn.textContent = 'Sign Out';
     if (avatarCircle) avatarCircle.textContent = shortName.charAt(0).toUpperCase();
   } else {
+    if (landingView) landingView.classList.remove('hidden');
+    if (appContainer) appContainer.classList.add('hidden');
+
     if (displayNameEl) displayNameEl.textContent = 'Guest Student';
-    if (statusSubEl) statusSubEl.textContent = 'Offline / Local';
+    if (statusSubEl) statusSubEl.textContent = 'Sign In to Access';
     if (actionBtn) actionBtn.textContent = 'Sign In';
     if (avatarCircle) avatarCircle.textContent = '👤';
   }
@@ -665,6 +673,97 @@ async function handleSignOut() {
     updateAuthUI();
     showToast('Logged out of your account.');
     refreshAllViews();
+  }
+}
+
+// ========================================================
+// LANDING AUTH WALL CONTROLLER (STRICT LOGIN GATE)
+// ========================================================
+let landingAuthMode = 'signin';
+
+function initLandingAuth() {
+  const tabSignIn = document.getElementById('landingTabSignIn');
+  const tabSignUp = document.getElementById('landingTabSignUp');
+  const title = document.getElementById('landingAuthTitle');
+  const sub = document.getElementById('landingAuthSub');
+  const submitBtnText = document.getElementById('landingSubmitBtnText');
+  const form = document.getElementById('landingAuthForm');
+  const errorMsg = document.getElementById('landingAuthErrorMessage');
+  const themeBtn = document.getElementById('landingThemeBtn');
+
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const isCurrentlyLight = document.body.classList.contains('theme-light');
+      const newTheme = isCurrentlyLight ? 'dark' : 'light';
+      state.settings.theme = newTheme;
+      saveState();
+      if (newTheme === 'light') {
+        document.body.classList.remove('theme-dark');
+        document.body.classList.add('theme-light');
+      } else {
+        document.body.classList.remove('theme-light');
+        document.body.classList.add('theme-dark');
+      }
+    });
+  }
+
+  function setMode(mode) {
+    landingAuthMode = mode;
+    if (errorMsg) errorMsg.classList.add('hidden');
+    if (mode === 'signin') {
+      tabSignIn.classList.add('active');
+      tabSignUp.classList.remove('active');
+      title.textContent = 'Sign in to your study space';
+      sub.textContent = 'Track courses, time your study sessions, and hit all your assignment deadlines.';
+      submitBtnText.textContent = 'Sign In to Dashboard';
+    } else {
+      tabSignIn.classList.remove('active');
+      tabSignUp.classList.add('active');
+      title.textContent = 'Create your free account';
+      sub.textContent = 'Your courses and schedule will be saved to your private account across all devices.';
+      submitBtnText.textContent = 'Create Account & Enter';
+    }
+  }
+
+  if (tabSignIn) tabSignIn.addEventListener('click', () => setMode('signin'));
+  if (tabSignUp) tabSignUp.addEventListener('click', () => setMode('signup'));
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('landingEmail').value.trim();
+      const password = document.getElementById('landingPassword').value;
+
+      if (errorMsg) errorMsg.classList.add('hidden');
+      submitBtnText.textContent = 'Connecting...';
+
+      try {
+        if (!supabaseClient) throw new Error('Connecting to cloud... please try again in a second.');
+
+        if (landingAuthMode === 'signin') {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          currentUser = data.user;
+          updateAuthUI();
+          showToast('Signed in successfully! Loading your study dashboard...');
+          await syncFromCloud();
+        } else {
+          const { data, error } = await supabaseClient.auth.signUp({ email, password });
+          if (error) throw error;
+          currentUser = data.user;
+          updateAuthUI();
+          showToast('Account created! Welcome to your study space.');
+          await syncFromCloud();
+        }
+      } catch (err) {
+        if (errorMsg) {
+          errorMsg.textContent = err.message || 'Authentication error. Please check your credentials.';
+          errorMsg.classList.remove('hidden');
+        }
+      } finally {
+        submitBtnText.textContent = landingAuthMode === 'signin' ? 'Sign In to Dashboard' : 'Create Account & Enter';
+      }
+    });
   }
 }
 
@@ -2044,6 +2143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initModals();
   initAuthModal();
+  initLandingAuth();
   initAmbientSounds();
   initKeyboardShortcuts();
   initTimer();
