@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudySync - Smart Study Schedule & Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark">
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path>
+            <path d="M6 6h10"></path>
+            <path d="M6 10h10"></path>
+            <path d="M6 14h6"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>StudySync</h1>
+          <span class="brand-tag">Pure Frontend Planner</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-btn active" data-tab="today">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span>Today</span>
+          <span class="badge" id="todayCountBadge">0</span>
+        </button>
+        <button class="nav-btn" data-tab="timetable">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span>Weekly Timetable</span>
+        </button>
+        <button class="nav-btn" data-tab="pomodoro">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path><path d="M12 3v-1"></path><path d="M10 2h4"></path></svg>
+          <span>Focus Timer</span>
+        </button>
+        <button class="nav-btn" data-tab="deadlines">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          <span>Tasks & Deadlines</span>
+          <span class="badge badge-warning" id="pendingTasksBadge">0</span>
+        </button>
+        <button class="nav-btn" data-tab="analytics">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span>Subjects & Stats</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer Mini Widget -->
+      <div class="sidebar-footer">
+        <div class="streak-card">
+          <div class="streak-icon">🔥</div>
+          <div class="streak-info">
+            <span class="streak-count" id="studyStreakDisplay">3 Day Streak</span>
+            <span class="streak-sub">Keep the momentum!</span>
+          </div>
+        </div>
+
+        <div class="theme-toggle-row">
+          <button id="themeToggleBtn" class="action-icon-btn" title="Toggle Dark/Light Mode">
+            <svg id="themeMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            <svg id="themeSun" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          </button>
+          <button id="backupDataBtn" class="action-icon-btn" title="Export / Import Data">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
+          <button id="resetDemoBtn" class="action-icon-btn text-muted" title="Load Sample Study Schedule">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="greeting-box">
+          <h2 id="pageTitle">Today's Schedule</h2>
+          <p id="currentLiveDate" class="text-secondary">Loading date...</p>
+        </div>
+
+        <div class="top-bar-actions">
+          <div class="current-time-pill" id="liveClockDisplay">00:00:00</div>
+          <button class="primary-btn" id="openAddBlockModalBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Add Study Block</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: TODAY VIEW -->
+      <section id="tab-today" class="tab-pane active">
+        <!-- Highlights Cards -->
+        <div class="stats-row">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Daily Goal</span>
+              <span class="metric-tag" id="goalPercentTag">0%</span>
+            </div>
+            <div class="metric-value-row">
+              <span class="metric-number" id="todayStudiedHours">0.0</span>
+              <span class="metric-unit">/ <span id="todayTargetHours">4.0</span> hrs</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="dailyGoalProgressBar" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Sessions Today</span>
+              <span class="metric-sub" id="sessionsStatusSub">0 planned</span>
+            </div>
+            <div class="metric-value-row">
+              <span class="metric-number" id="completedSessionsCount">0</span>
+              <span class="metric-unit">completed</span>
+            </div>
+            <div class="session-dots" id="sessionDotsContainer">
+              <!-- Dots rendered via JS -->
+            </div>
+          </div>
+
+          <div class="metric-card active-session-card" id="currentSessionCard">
+            <div class="metric-header">
+              <span class="metric-label">Currently Happening</span>
+              <span class="pulse-indicator"></span>
+            </div>
+            <div id="currentSessionContent">
+              <h4 id="currentSessionTitle" class="current-title">Free Time</h4>
+              <p id="currentSessionTime" class="text-secondary">No active study block right now</p>
+            </div>
+            <button class="quick-timer-btn" id="quickTimerBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Quick Focus</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Today's Schedule Timeline & Quick Tasks -->
+        <div class="two-col-layout">
+          <div class="content-panel left-panel">
+            <div class="panel-header">
+              <div class="header-left">
+                <h3>Today's Study Timeline</h3>
+                <span class="badge" id="todayBlocksCount">0 blocks</span>
+              </div>
+              <div class="header-right">
+                <span id="currentDayOfWeekLabel" class="current-day-badge">Today</span>
+              </div>
+            </div>
+
+            <div class="timeline-container" id="todayTimelineList">
+              <!-- Dynamic Today's Blocks will be injected here -->
+            </div>
+          </div>
+
+          <div class="content-panel right-panel">
+            <div class="panel-header">
+              <h3>Urgent Deadlines</h3>
+              <button class="link-btn" id="goToDeadlinesTabBtn">View All</button>
+            </div>
+
+            <div class="upcoming-deadlines-list" id="miniDeadlinesList">
+              <!-- Urgent tasks injected here -->
+            </div>
+
+            <div class="quick-add-task-box">
+              <input type="text" id="quickTaskInput" placeholder="Quick add task for today..." />
+              <button id="quickTaskAddBtn" class="secondary-btn">Add</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: WEEKLY TIMETABLE -->
+      <section id="tab-timetable" class="tab-pane">
+        <div class="timetable-controls">
+          <div class="day-filter-bar" id="dayFilterButtons">
+            <button class="day-tab-btn active" data-day="all">Whole Week</button>
+            <button class="day-tab-btn" data-day="1">Mon</button>
+            <button class="day-tab-btn" data-day="2">Tue</button>
+            <button class="day-tab-btn" data-day="3">Wed</button>
+            <button class="day-tab-btn" data-day="4">Thu</button>
+            <button class="day-tab-btn" data-day="5">Fri</button>
+            <button class="day-tab-btn" data-day="6">Sat</button>
+            <button class="day-tab-btn" data-day="0">Sun</button>
+          </div>
+
+          <div class="subject-filter-box">
+            <label for="filterSubjectSelect">Subject:</label>
+            <select id="filterSubjectSelect" class="form-select">
+              <option value="all">All Subjects</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Timetable Grid View -->
+        <div class="weekly-grid-wrapper" id="weeklyGridContainer">
+          <!-- Rendered via JS: 7 Columns for Monday to Sunday -->
+        </div>
+      </section>
+
+      <!-- TAB 3: FOCUS TIMER (POMODORO) -->
+      <section id="tab-pomodoro" class="tab-pane">
+        <div class="focus-timer-container">
+          <div class="timer-mode-selector">
+            <button class="mode-btn active" data-duration="25" data-mode="pomodoro">Pomodoro (25m)</button>
+            <button class="mode-btn" data-duration="50" data-mode="deep">Deep Work (50m)</button>
+            <button class="mode-btn" data-duration="5" data-mode="short-break">Short Break (5m)</button>
+            <button class="mode-btn" data-duration="15" data-mode="long-break">Long Break (15m)</button>
+          </div>
+
+          <div class="timer-display-box">
+            <div class="timer-ring-wrapper">
+              <svg class="timer-ring-svg" width="320" height="320" viewBox="0 0 320 320">
+                <circle class="ring-bg" cx="160" cy="160" r="140"></circle>
+                <circle class="ring-progress" id="timerRingProgress" cx="160" cy="160" r="140"></circle>
+              </svg>
+              <div class="timer-inner-content">
+                <div class="timer-digits" id="timerDigits">25:00</div>
+                <div class="timer-mode-tag" id="timerModeTag">Focus Session</div>
+                <div class="timer-subject-pill" id="timerCurrentSubjectPill">General Study</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="timer-subject-picker">
+            <label for="timerSubjectSelect">Assign this session to:</label>
+            <select id="timerSubjectSelect" class="form-select">
+              <!-- Dynamically populated subjects -->
+            </select>
+          </div>
+
+          <div class="timer-controls">
+            <button id="timerToggleBtn" class="timer-main-btn">
+              <svg id="timerPlayIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <svg id="timerPauseIcon" class="hidden" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+              <span id="timerActionText">Start Focus</span>
+            </button>
+            <button id="timerResetBtn" class="timer-secondary-btn" title="Reset Timer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button id="timerSkipBtn" class="timer-secondary-btn" title="Complete & Log Session Early">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </button>
+          </div>
+
+          <div class="timer-stats-hint">
+            <span>Sessions today: <strong id="timerSessionsCompletedToday">0</strong></span>
+            <span>•</span>
+            <span>Minutes focused today: <strong id="timerMinutesFocusedToday">0m</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: TASKS & DEADLINES -->
+      <section id="tab-deadlines" class="tab-pane">
+        <div class="panel-header-bar">
+          <div>
+            <h3>Assignments, Homework & Exams</h3>
+            <p class="text-secondary">Keep track of your study deliverables and upcoming test dates.</p>
+          </div>
+          <button class="primary-btn" id="openAddTaskModalBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>New Task / Exam</span>
+          </button>
+        </div>
+
+        <div class="tasks-filter-bar">
+          <div class="segmented-control" id="taskStatusFilter">
+            <button class="seg-btn active" data-filter="all">All</button>
+            <button class="seg-btn" data-filter="pending">Pending</button>
+            <button class="seg-btn" data-filter="completed">Completed</button>
+          </div>
+          <div class="task-category-filter">
+            <select id="taskSubjectFilterSelect" class="form-select">
+              <option value="all">All Subjects</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tasks-grid" id="tasksListContainer">
+          <!-- Injected via JS -->
+        </div>
+      </section>
+
+      <!-- TAB 5: ANALYTICS & SUBJECTS -->
+      <section id="tab-analytics" class="tab-pane">
+        <div class="analytics-layout">
+          <!-- Left: Subjects List & Add Subject -->
+          <div class="content-panel">
+            <div class="panel-header">
+              <h3>Courses & Subjects</h3>
+              <button class="secondary-btn" id="openAddSubjectModalBtn">+ Add Subject</button>
+            </div>
+            <div class="subjects-card-list" id="subjectsListContainer">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Right: Study Distribution & Weekly Goals -->
+          <div class="content-panel">
+            <div class="panel-header">
+              <h3>Study Time Distribution</h3>
+              <span class="text-secondary text-sm">Last 7 Days</span>
+            </div>
+
+            <div class="chart-summary-box" id="studyDistributionChart">
+              <!-- Custom visual bars rendered via JS -->
+            </div>
+
+            <div class="daily-hours-breakdown">
+              <h4 class="sub-heading">Daily Study Logs</h4>
+              <div class="history-list" id="recentStudyLogsList">
+                <!-- Log entries -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: ADD / EDIT STUDY BLOCK -->
+  <div class="modal-backdrop hidden" id="blockModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 id="blockModalTitle">Add Study Session</h3>
+        <button class="close-modal-btn" data-close="blockModal">&times;</button>
+      </div>
+      <form id="blockForm">
+        <input type="hidden" id="blockId" value="">
+        <div class="form-group">
+          <label for="blockTitle">Session Title / Topic *</label>
+          <input type="text" id="blockTitle" required placeholder="e.g. Calculus Problem Set 3 or Chapter 4 Review">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="blockSubject">Subject *</label>
+            <select id="blockSubject" required class="form-select">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="blockDay">Day of Week *</label>
+            <select id="blockDay" required class="form-select">
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+              <option value="0">Sunday</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="blockStartTime">Start Time *</label>
+            <input type="time" id="blockStartTime" required value="09:00">
+          </div>
+          <div class="form-group">
+            <label for="blockEndTime">End Time *</label>
+            <input type="time" id="blockEndTime" required value="10:30">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="blockNotes">Goals or Notes (optional)</label>
+          <textarea id="blockNotes" rows="2" placeholder="e.g. Complete exercises 12 to 25. Focus on edge cases."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="danger-btn hidden" id="deleteBlockBtn">Delete Session</button>
+          <div class="right-actions">
+            <button type="button" class="secondary-btn" data-close="blockModal">Cancel</button>
+            <button type="submit" class="primary-btn">Save Session</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT SUBJECT -->
+  <div class="modal-backdrop hidden" id="subjectModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 id="subjectModalTitle">Add Course / Subject</h3>
+        <button class="close-modal-btn" data-close="subjectModal">&times;</button>
+      </div>
+      <form id="subjectForm">
+        <input type="hidden" id="subjectId" value="">
+        <div class="form-group">
+          <label for="subjectName">Subject Name *</label>
+          <input type="text" id="subjectName" required placeholder="e.g. Data Structures & Algorithms">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="subjectGoalHours">Weekly Goal (Hours)</label>
+            <input type="number" id="subjectGoalHours" min="0.5" max="50" step="0.5" value="6.0">
+          </div>
+          <div class="form-group">
+            <label for="subjectColor">Badge Color</label>
+            <div class="color-picker-row">
+              <input type="color" id="subjectColor" value="#3b82f6" class="color-input">
+              <span id="colorHexDisplay" class="color-hex-text">#3b82f6</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="danger-btn hidden" id="deleteSubjectBtn">Delete</button>
+          <div class="right-actions">
+            <button type="button" class="secondary-btn" data-close="subjectModal">Cancel</button>
+            <button type="submit" class="primary-btn">Save Subject</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT TASK -->
+  <div class="modal-backdrop hidden" id="taskModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 id="taskModalTitle">Add Task or Deadline</h3>
+        <button class="close-modal-btn" data-close="taskModal">&times;</button>
+      </div>
+      <form id="taskForm">
+        <input type="hidden" id="taskId" value="">
+        <div class="form-group">
+          <label for="taskTitle">Task or Exam Description *</label>
+          <input type="text" id="taskTitle" required placeholder="e.g. Physics Midterm Examination or Essay Submission">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskSubject">Subject *</label>
+            <select id="taskSubject" required class="form-select">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="taskPriority">Priority</label>
+            <select id="taskPriority" class="form-select">
+              <option value="high">🔥 High Priority</option>
+              <option value="medium" selected>⚡ Medium</option>
+              <option value="low">🌱 Low</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskDueDate">Due Date *</label>
+            <input type="date" id="taskDueDate" required>
+          </div>
+          <div class="form-group">
+            <label for="taskType">Category</label>
+            <select id="taskType" class="form-select">
+              <option value="assignment">Assignment</option>
+              <option value="exam">Exam / Quiz</option>
+              <option value="reading">Reading / Prep</option>
+              <option value="project">Project Milestone</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="danger-btn hidden" id="deleteTaskBtn">Delete</button>
+          <div class="right-actions">
+            <button type="button" class="secondary-btn" data-close="taskModal">Cancel</button>
+            <button type="submit" class="primary-btn">Save Task</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: BACKUP & DATA -->
+  <div class="modal-backdrop hidden" id="backupModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3>Manage Data & Backup</h3>
+        <button class="close-modal-btn" data-close="backupModal">&times;</button>
+      </div>
+      <div class="backup-content">
+        <p class="text-secondary text-sm">All schedule and progress data is saved automatically in your browser's local storage.</p>
+        
+        <div class="backup-action-card">
+          <div class="action-info">
+            <h4>Export Data (Backup)</h4>
+            <p>Download a JSON backup of your subjects, schedule, and logs.</p>
+          </div>
+          <button id="exportJsonBtn" class="secondary-btn">Download JSON</button>
+        </div>
+
+        <div class="backup-action-card">
+          <div class="action-info">
+            <h4>Import Data</h4>
+            <p>Restore your schedule from a previously saved JSON backup file.</p>
+          </div>
+          <label class="secondary-btn file-upload-label">
+            Import JSON
+            <input type="file" id="importJsonInput" accept=".json" class="hidden">
+          </label>
+        </div>
+
+        <div class="backup-action-card danger-zone">
+          <div class="action-info">
+            <h4>Reset Sample Data</h4>
+            <p>Restore the default sample schedule and courses.</p>
+          </div>
+          <button id="confirmResetBtn" class="danger-btn">Reset to Sample</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastNotification" class="toast hidden">Session saved successfully!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
