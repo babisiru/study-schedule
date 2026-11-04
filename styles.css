@@ -291,6 +291,42 @@ body {
   letter-spacing: 0.05em;
 }
 
+.cloud-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: var(--transition);
+}
+
+.cloud-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: var(--transition);
+}
+
+.cloud-indicator.online {
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+}
+
+.cloud-indicator.syncing {
+  background: var(--warning);
+  animation: pulse 1s infinite;
+}
+
+.cloud-indicator.offline {
+  background: var(--danger);
+}
+
 /* Buttons */
 .primary-btn {
   background: var(--accent-primary);

@@ -9,6 +9,121 @@
 
 const STORAGE_KEY = 'studySync_v1_data';
 
+// Supabase Cloud Configuration
+const SUPABASE_URL = 'https://enpbtfrsjtqwzcgwikey.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_C-j3YzwqdBPYQN958alB-A_gVn4ZlTy';
+
+let supabaseClient = null;
+
+function initSupabase() {
+  try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+      console.log('Supabase client initialized successfully');
+    }
+  } catch (err) {
+    console.warn('Could not initialize Supabase:', err);
+  }
+}
+
+function updateCloudStatus(status, text) {
+  const pill = document.getElementById('cloudStatusPill');
+  const indicator = pill ? pill.querySelector('.cloud-indicator') : null;
+  const label = document.getElementById('cloudStatusText');
+  if (!indicator || !label) return;
+
+  indicator.className = 'cloud-indicator ' + status; // 'online' | 'syncing' | 'offline'
+  label.textContent = text;
+}
+
+async function syncFromCloud() {
+  if (!supabaseClient) {
+    updateCloudStatus('offline', 'Local Only');
+    return;
+  }
+
+  updateCloudStatus('syncing', 'Syncing Cloud...');
+
+  try {
+    const [subjRes, schedRes, tasksRes, logsRes] = await Promise.all([
+      supabaseClient.from('subjects').select('*'),
+      supabaseClient.from('schedule').select('*'),
+      supabaseClient.from('tasks').select('*'),
+      supabaseClient.from('study_logs').select('*')
+    ]);
+
+    if (subjRes.error || schedRes.error || tasksRes.error || logsRes.error) {
+      const err = subjRes.error || schedRes.error || tasksRes.error || logsRes.error;
+      console.warn('Supabase query note (tables might need initial SQL setup):', err);
+      updateCloudStatus('offline', 'Run SQL in Supabase');
+      return;
+    }
+
+    const remoteSubjects = subjRes.data || [];
+    const remoteSchedule = schedRes.data || [];
+    const remoteTasks = tasksRes.data || [];
+    const remoteLogs = logsRes.data || [];
+
+    // If cloud is brand new and empty, seed it with the default timetable
+    if (remoteSubjects.length === 0 && remoteSchedule.length === 0) {
+      console.log('Cloud database is empty, uploading initial schedule...');
+      await seedCloudDatabase();
+      updateCloudStatus('online', 'Cloud Initialized');
+    } else {
+      // Cloud has existing data -> sync into local state
+      state.subjects = remoteSubjects;
+      state.schedule = remoteSchedule;
+      state.tasks = remoteTasks;
+      state.studyLogs = remoteLogs;
+      saveState();
+      refreshAllViews();
+      updateCloudStatus('online', 'Cloud Synced');
+    }
+  } catch (err) {
+    console.error('Cloud sync error:', err);
+    updateCloudStatus('offline', 'Offline Mode');
+  }
+}
+
+async function seedCloudDatabase() {
+  if (!supabaseClient) return;
+  try {
+    if (state.subjects.length) {
+      await supabaseClient.from('subjects').upsert(state.subjects);
+    }
+    if (state.schedule.length) {
+      await supabaseClient.from('schedule').upsert(state.schedule);
+    }
+    if (state.tasks.length) {
+      await supabaseClient.from('tasks').upsert(state.tasks);
+    }
+    if (state.studyLogs.length) {
+      await supabaseClient.from('study_logs').upsert(state.studyLogs);
+    }
+  } catch (e) {
+    console.warn('Error seeding cloud database:', e);
+  }
+}
+
+async function syncToCloud(table, action, recordOrId) {
+  if (!supabaseClient) return;
+
+  try {
+    updateCloudStatus('syncing', 'Saving...');
+    if (action === 'upsert' || action === 'insert') {
+      const { error } = await supabaseClient.from(table).upsert(recordOrId);
+      if (error) throw error;
+    } else if (action === 'delete') {
+      const { error } = await supabaseClient.from(table).delete().eq('id', recordOrId);
+      if (error) throw error;
+    }
+    updateCloudStatus('online', 'Cloud Synced');
+  } catch (err) {
+    console.warn(`Failed to sync ${table} to cloud:`, err);
+    updateCloudStatus('offline', 'Sync Issue');
+  }
+}
+
 const DEFAULT_SUBJECTS = [
   { id: 'subj-1', name: 'Data Structures & Algorithms', color: '#3b82f6', goalHoursWeek: 8 },
   { id: 'subj-2', name: 'Linear Algebra & Calculus', color: '#10b981', goalHoursWeek: 6 },
@@ -343,6 +458,7 @@ function finishTimerSession() {
     };
     state.studyLogs.unshift(newLog);
     saveState();
+    syncToCloud('study_logs', 'insert', newLog);
 
     showToast(`🎉 Focus session logged: +${durationCompletedMinutes} mins!`);
   } else {
@@ -687,6 +803,7 @@ function setupQuickTask() {
 
     state.tasks.push(newTask);
     saveState();
+    syncToCloud('tasks', 'insert', newTask);
     input.value = '';
     renderDashboard();
     renderTasksList();
@@ -920,6 +1037,7 @@ function toggleTaskStatus(taskId) {
     task.completed = !task.completed;
     if (task.completed) playChime('success');
     saveState();
+    syncToCloud('tasks', 'upsert', task);
     renderTasksList();
     renderDashboard();
   }
@@ -1184,6 +1302,7 @@ function handleBlockFormSubmit(e) {
       block.startTime = startTime;
       block.endTime = endTime;
       block.notes = notes;
+      syncToCloud('schedule', 'upsert', block);
     }
     showToast('Session updated successfully!');
   } else {
@@ -1198,6 +1317,7 @@ function handleBlockFormSubmit(e) {
       notes
     };
     state.schedule.push(newBlock);
+    syncToCloud('schedule', 'upsert', newBlock);
     showToast('Study session created!');
   }
 
@@ -1214,6 +1334,7 @@ function handleBlockDelete() {
     state.schedule = state.schedule.filter(b => b.id !== id);
     state.completedBlockIdsToday = state.completedBlockIdsToday.filter(bId => bId !== id);
     saveState();
+    syncToCloud('schedule', 'delete', id);
     closeModal('blockModal');
     refreshAllViews();
     showToast('Session deleted.');
@@ -1270,6 +1391,7 @@ function handleSubjectFormSubmit(e) {
       s.name = name;
       s.goalHoursWeek = goalHoursWeek;
       s.color = color;
+      syncToCloud('subjects', 'upsert', s);
     }
     showToast('Subject updated!');
   } else {
@@ -1280,6 +1402,7 @@ function handleSubjectFormSubmit(e) {
       goalHoursWeek
     };
     state.subjects.push(newSubject);
+    syncToCloud('subjects', 'upsert', newSubject);
     showToast('New subject added!');
   }
 
@@ -1300,6 +1423,7 @@ function handleSubjectDelete() {
   if (confirm('Delete this subject? Scheduled sessions for this subject will also be affected.')) {
     state.subjects = state.subjects.filter(s => s.id !== id);
     saveState();
+    syncToCloud('subjects', 'delete', id);
     closeModal('subjectModal');
     refreshAllViews();
     showToast('Subject deleted.');
@@ -1371,6 +1495,7 @@ function handleTaskFormSubmit(e) {
       t.priority = priority;
       t.dueDate = dueDate;
       t.type = type;
+      syncToCloud('tasks', 'upsert', t);
     }
     showToast('Task updated!');
   } else {
@@ -1384,6 +1509,7 @@ function handleTaskFormSubmit(e) {
       completed: false
     };
     state.tasks.push(newTask);
+    syncToCloud('tasks', 'upsert', newTask);
     showToast('New deadline saved!');
   }
 
@@ -1399,6 +1525,7 @@ function handleTaskDelete() {
   if (confirm('Delete this task or deadline?')) {
     state.tasks = state.tasks.filter(t => t.id !== id);
     saveState();
+    syncToCloud('tasks', 'delete', id);
     closeModal('taskModal');
     refreshAllViews();
     showToast('Task deleted.');
@@ -1565,5 +1692,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupQuickTask();
   startLiveEngine();
   refreshAllViews();
+  initSupabase();
+  syncFromCloud();
 });
 
