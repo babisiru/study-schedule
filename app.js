@@ -14,15 +14,66 @@ const SUPABASE_URL = 'https://enpbtfrsjtqwzcgwikey.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_C-j3YzwqdBPYQN958alB-A_gVn4ZlTy';
 
 let supabaseClient = null;
+let currentUser = null;
 
 function initSupabase() {
   try {
     if (window.supabase && typeof window.supabase.createClient === 'function') {
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
       console.log('Supabase client initialized successfully');
+      initAuth();
     }
   } catch (err) {
     console.warn('Could not initialize Supabase:', err);
+  }
+}
+
+async function initAuth() {
+  if (!supabaseClient) return;
+
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user) {
+      currentUser = session.user;
+    }
+  } catch (err) {
+    console.warn('Session check note:', err);
+  }
+
+  updateAuthUI();
+
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth state changed:', event);
+    if (session && session.user) {
+      currentUser = session.user;
+      showToast(`Welcome, ${currentUser.email.split('@')[0]}!`);
+      closeModal('authModal');
+      await syncFromCloud();
+    } else {
+      currentUser = null;
+    }
+    updateAuthUI();
+    refreshAllViews();
+  });
+}
+
+function updateAuthUI() {
+  const displayNameEl = document.getElementById('userDisplayName');
+  const statusSubEl = document.getElementById('userStatusSub');
+  const actionBtn = document.getElementById('authActionBtn');
+  const avatarCircle = document.getElementById('userAvatarCircle');
+
+  if (currentUser) {
+    const shortName = currentUser.email.split('@')[0];
+    if (displayNameEl) displayNameEl.textContent = shortName;
+    if (statusSubEl) statusSubEl.textContent = 'Account Synced';
+    if (actionBtn) actionBtn.textContent = 'Sign Out';
+    if (avatarCircle) avatarCircle.textContent = shortName.charAt(0).toUpperCase();
+  } else {
+    if (displayNameEl) displayNameEl.textContent = 'Guest Student';
+    if (statusSubEl) statusSubEl.textContent = 'Offline / Local';
+    if (actionBtn) actionBtn.textContent = 'Sign In';
+    if (avatarCircle) avatarCircle.textContent = '👤';
   }
 }
 
@@ -45,11 +96,21 @@ async function syncFromCloud() {
   updateCloudStatus('syncing', 'Syncing Cloud...');
 
   try {
+    let subjQuery = supabaseClient.from('subjects').select('*');
+    let schedQuery = supabaseClient.from('schedule').select('*');
+    let tasksQuery = supabaseClient.from('tasks').select('*');
+    let logsQuery = supabaseClient.from('study_logs').select('*');
+
+    // If logged in, isolate user's private data!
+    if (currentUser) {
+      subjQuery = subjQuery.eq('userId', currentUser.id);
+      schedQuery = schedQuery.eq('userId', currentUser.id);
+      tasksQuery = tasksQuery.eq('userId', currentUser.id);
+      logsQuery = logsQuery.eq('userId', currentUser.id);
+    }
+
     const [subjRes, schedRes, tasksRes, logsRes] = await Promise.all([
-      supabaseClient.from('subjects').select('*'),
-      supabaseClient.from('schedule').select('*'),
-      supabaseClient.from('tasks').select('*'),
-      supabaseClient.from('study_logs').select('*')
+      subjQuery, schedQuery, tasksQuery, logsQuery
     ]);
 
     if (subjRes.error || schedRes.error || tasksRes.error || logsRes.error) {
@@ -64,13 +125,12 @@ async function syncFromCloud() {
     const remoteTasks = tasksRes.data || [];
     const remoteLogs = logsRes.data || [];
 
-    // If cloud is brand new and empty, seed it with the default timetable
+    // If user is brand new with no cloud data yet, seed sample data for them
     if (remoteSubjects.length === 0 && remoteSchedule.length === 0) {
-      console.log('Cloud database is empty, uploading initial schedule...');
+      console.log('User has no cloud data yet, seeding initial schedule...');
       await seedCloudDatabase();
-      updateCloudStatus('online', 'Cloud Initialized');
+      updateCloudStatus('online', 'Cloud Ready');
     } else {
-      // Cloud has existing data -> sync into local state
       state.subjects = remoteSubjects;
       state.schedule = remoteSchedule;
       state.tasks = remoteTasks;
@@ -88,17 +148,19 @@ async function syncFromCloud() {
 async function seedCloudDatabase() {
   if (!supabaseClient) return;
   try {
+    const withUser = (items) => items.map(item => currentUser ? { ...item, userId: currentUser.id } : item);
+
     if (state.subjects.length) {
-      await supabaseClient.from('subjects').upsert(state.subjects);
+      await supabaseClient.from('subjects').upsert(withUser(state.subjects));
     }
     if (state.schedule.length) {
-      await supabaseClient.from('schedule').upsert(state.schedule);
+      await supabaseClient.from('schedule').upsert(withUser(state.schedule));
     }
     if (state.tasks.length) {
-      await supabaseClient.from('tasks').upsert(state.tasks);
+      await supabaseClient.from('tasks').upsert(withUser(state.tasks));
     }
     if (state.studyLogs.length) {
-      await supabaseClient.from('study_logs').upsert(state.studyLogs);
+      await supabaseClient.from('study_logs').upsert(withUser(state.studyLogs));
     }
   } catch (e) {
     console.warn('Error seeding cloud database:', e);
@@ -111,7 +173,11 @@ async function syncToCloud(table, action, recordOrId) {
   try {
     updateCloudStatus('syncing', 'Saving...');
     if (action === 'upsert' || action === 'insert') {
-      const { error } = await supabaseClient.from(table).upsert(recordOrId);
+      const payload = { ...recordOrId };
+      if (currentUser) {
+        payload.userId = currentUser.id;
+      }
+      const { error } = await supabaseClient.from(table).upsert(payload);
       if (error) throw error;
     } else if (action === 'delete') {
       const { error } = await supabaseClient.from(table).delete().eq('id', recordOrId);
@@ -120,7 +186,7 @@ async function syncToCloud(table, action, recordOrId) {
     updateCloudStatus('online', 'Cloud Synced');
   } catch (err) {
     console.warn(`Failed to sync ${table} to cloud:`, err);
-    updateCloudStatus('offline', 'Sync Issue');
+    updateCloudStatus('offline', 'Local Saved');
   }
 }
 
@@ -317,6 +383,292 @@ function playChime(type = 'success') {
 }
 
 // ========================================================
+// INTERACTIVE AMBIENT SOUNDS & FOCUS SYNTHESIZER
+// ========================================================
+let ambientNode = null;
+let currentAmbientSound = 'none';
+
+function playAmbientSound(type) {
+  stopAmbientSound();
+  currentAmbientSound = type;
+
+  if (type === 'none') return;
+
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    const bufferSize = 2 * audioCtx.sampleRate;
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1; // White noise
+    }
+
+    const whiteNoise = audioCtx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+
+    const filter = audioCtx.createBiquadFilter();
+    const gainNode = audioCtx.createGain();
+
+    if (type === 'rain') {
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    } else if (type === 'whitenoise') {
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1100, audioCtx.currentTime);
+      filter.Q.setValueAtTime(1.0, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
+    } else if (type === 'waves') {
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(450, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.09, audioCtx.currentTime);
+
+      const lfo = audioCtx.createOscillator();
+      const lfoGain = audioCtx.createGain();
+      lfo.frequency.setValueAtTime(0.12, audioCtx.currentTime);
+      lfoGain.gain.setValueAtTime(250, audioCtx.currentTime);
+      lfo.connect(filter.frequency);
+      lfo.start();
+    } else if (type === 'binaural') {
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(320, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    }
+
+    whiteNoise.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    whiteNoise.start();
+
+    ambientNode = { whiteNoise, gainNode };
+  } catch (err) {
+    console.warn('Ambient sound synthesis note:', err);
+  }
+}
+
+function stopAmbientSound() {
+  if (ambientNode) {
+    try {
+      ambientNode.whiteNoise.stop();
+      ambientNode.whiteNoise.disconnect();
+    } catch (e) {}
+    ambientNode = null;
+  }
+}
+
+function initAmbientSounds() {
+  document.querySelectorAll('#ambientSoundButtons .ambient-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#ambientSoundButtons .ambient-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const soundType = btn.dataset.sound;
+      playAmbientSound(soundType);
+    });
+  });
+}
+
+// ========================================================
+// INTERACTIVE CONFETTI CELEBRATION
+// ========================================================
+function triggerConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const pieces = [];
+  const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#38bdf8', '#a855f7'];
+
+  for (let i = 0; i < 70; i++) {
+    pieces.push({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      vx: (Math.random() - 0.5) * 18,
+      vy: (Math.random() - 0.7) * 16,
+      size: Math.random() * 8 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      vRot: (Math.random() - 0.5) * 10,
+      alpha: 1
+    });
+  }
+
+  let animationFrame;
+  function update() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let activePieces = 0;
+
+    pieces.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.4;
+      p.rotation += p.vRot;
+      p.alpha -= 0.015;
+
+      if (p.alpha > 0) {
+        activePieces++;
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+      }
+    });
+
+    if (activePieces > 0) {
+      animationFrame = requestAnimationFrame(update);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      cancelAnimationFrame(animationFrame);
+    }
+  }
+
+  update();
+}
+
+// ========================================================
+// INTERACTIVE KEYBOARD SHORTCUTS
+// ========================================================
+function initKeyboardShortcuts() {
+  window.addEventListener('keydown', (e) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+      return;
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      toggleTimer();
+    } else if (e.key === 'r' || e.key === 'R') {
+      pauseTimer();
+      const activeModeBtn = document.querySelector('.mode-btn.active');
+      const mins = activeModeBtn ? parseInt(activeModeBtn.dataset.duration, 10) : 25;
+      resetTimerTo(mins);
+      showToast('Timer reset');
+    } else if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.add('hidden'));
+    }
+  });
+}
+
+// ========================================================
+// AUTHENTICATION MODAL CONTROLLER
+// ========================================================
+let authMode = 'signin';
+
+function initAuthModal() {
+  const modal = document.getElementById('authModal');
+  const title = document.getElementById('authModalTitle');
+  const tabSignIn = document.getElementById('authTabSignIn');
+  const tabSignUp = document.getElementById('authTabSignUp');
+  const submitText = document.getElementById('authSubmitText');
+  const switchNote = document.getElementById('authSwitchNote');
+  const authForm = document.getElementById('authForm');
+  const errorMsg = document.getElementById('authErrorMessage');
+  const actionBtn = document.getElementById('authActionBtn');
+
+  function setMode(mode) {
+    authMode = mode;
+    errorMsg.classList.add('hidden');
+    if (mode === 'signin') {
+      title.textContent = 'Sign In to StudySync';
+      tabSignIn.classList.add('active');
+      tabSignUp.classList.remove('active');
+      submitText.textContent = 'Sign In';
+      switchNote.innerHTML = `Don't have an account yet? <a href="#" id="authSwitchLink">Create one here</a>`;
+    } else {
+      title.textContent = 'Create StudySync Account';
+      tabSignIn.classList.remove('active');
+      tabSignUp.classList.add('active');
+      submitText.textContent = 'Create Account';
+      switchNote.innerHTML = `Already have an account? <a href="#" id="authSwitchLink">Sign In here</a>`;
+    }
+    const newLink = document.getElementById('authSwitchLink');
+    if (newLink) {
+      newLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        setMode(authMode === 'signin' ? 'signup' : 'signin');
+      });
+    }
+  }
+
+  if (tabSignIn) tabSignIn.addEventListener('click', () => setMode('signin'));
+  if (tabSignUp) tabSignUp.addEventListener('click', () => setMode('signup'));
+
+  const initialSwitchLink = document.getElementById('authSwitchLink');
+  if (initialSwitchLink) {
+    initialSwitchLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      setMode(authMode === 'signin' ? 'signup' : 'signin');
+    });
+  }
+
+  if (actionBtn) {
+    actionBtn.addEventListener('click', () => {
+      if (currentUser) {
+        if (confirm('Log out of StudySync?')) {
+          handleSignOut();
+        }
+      } else {
+        openModal('authModal');
+      }
+    });
+  }
+
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+
+      errorMsg.classList.add('hidden');
+      submitText.textContent = 'Processing...';
+
+      try {
+        if (!supabaseClient) throw new Error('Supabase is not initialized');
+
+        if (authMode === 'signin') {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          showToast('Signed in successfully!');
+          closeModal('authModal');
+        } else {
+          const { data, error } = await supabaseClient.auth.signUp({ email, password });
+          if (error) throw error;
+          showToast('Account created! Welcome to StudySync.');
+          closeModal('authModal');
+        }
+      } catch (err) {
+        errorMsg.textContent = err.message || 'Authentication error. Please try again.';
+        errorMsg.classList.remove('hidden');
+      } finally {
+        submitText.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+      }
+    });
+  }
+}
+
+async function handleSignOut() {
+  if (supabaseClient) {
+    await supabaseClient.auth.signOut();
+    currentUser = null;
+    updateAuthUI();
+    showToast('Logged out of your account.');
+    refreshAllViews();
+  }
+}
+
+// ========================================================
 // 3. POMODORO TIMER ENGINE
 // ========================================================
 let timerInterval = null;
@@ -461,6 +813,7 @@ function finishTimerSession() {
     syncToCloud('study_logs', 'insert', newLog);
 
     showToast(`🎉 Focus session logged: +${durationCompletedMinutes} mins!`);
+    triggerConfetti();
   } else {
     showToast(`Break time completed! Ready for the next session.`);
   }
@@ -720,6 +1073,7 @@ function toggleBlockCompleted(blockId) {
   } else {
     state.completedBlockIdsToday.push(blockId);
     playChime('success');
+    triggerConfetti();
   }
   saveState();
   renderDashboard();
@@ -1035,7 +1389,10 @@ function toggleTaskStatus(taskId) {
   const task = state.tasks.find(t => t.id === taskId);
   if (task) {
     task.completed = !task.completed;
-    if (task.completed) playChime('success');
+    if (task.completed) {
+      playChime('success');
+      triggerConfetti();
+    }
     saveState();
     syncToCloud('tasks', 'upsert', task);
     renderTasksList();
@@ -1686,6 +2043,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initNavigation();
   initModals();
+  initAuthModal();
+  initAmbientSounds();
+  initKeyboardShortcuts();
   initTimer();
   initTimetable();
   initTasks();

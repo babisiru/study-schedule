@@ -55,6 +55,16 @@
 
       <!-- Sidebar Footer Mini Widget -->
       <div class="sidebar-footer">
+        <!-- User Profile Card -->
+        <div class="user-profile-card" id="userProfileCard">
+          <div class="user-avatar-circle" id="userAvatarCircle">👤</div>
+          <div class="user-profile-info">
+            <span class="user-display-name" id="userDisplayName">Guest Student</span>
+            <span class="user-status-text" id="userStatusSub">Local Mode</span>
+          </div>
+          <button class="auth-btn-pill" id="authActionBtn">Sign In</button>
+        </div>
+
         <div class="streak-card">
           <div class="streak-icon">🔥</div>
           <div class="streak-info">
@@ -249,12 +259,24 @@
               <svg id="timerPauseIcon" class="hidden" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
               <span id="timerActionText">Start Focus</span>
             </button>
-            <button id="timerResetBtn" class="timer-secondary-btn" title="Reset Timer">
+            <button id="timerResetBtn" class="timer-secondary-btn" title="Reset Timer (R)">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>
             <button id="timerSkipBtn" class="timer-secondary-btn" title="Complete & Log Session Early">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </button>
+          </div>
+
+          <!-- Interactive Ambient Background Audio -->
+          <div class="ambient-sound-bar">
+            <span class="ambient-label">🎧 Focus Ambience:</span>
+            <div class="ambient-options" id="ambientSoundButtons">
+              <button class="ambient-btn active" data-sound="none">Off</button>
+              <button class="ambient-btn" data-sound="rain">🌧️ Rain</button>
+              <button class="ambient-btn" data-sound="whitenoise">📻 Static</button>
+              <button class="ambient-btn" data-sound="waves">🌊 Waves</button>
+              <button class="ambient-btn" data-sound="binaural">🧘 Zen</button>
+            </div>
           </div>
 
           <div class="timer-stats-hint">
@@ -531,6 +553,45 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL: SIGN IN / SIGN UP -->
+  <div class="modal-backdrop hidden" id="authModal">
+    <div class="modal-window auth-modal-window">
+      <div class="modal-header">
+        <h3 id="authModalTitle">Sign In to StudySync</h3>
+        <button class="close-modal-btn" data-close="authModal">&times;</button>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="authTabSignIn">Sign In</button>
+        <button class="auth-tab-btn" id="authTabSignUp">Create Account</button>
+      </div>
+
+      <form id="authForm">
+        <div class="form-group">
+          <label for="authEmail">Email Address *</label>
+          <input type="email" id="authEmail" required placeholder="student@university.edu" autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label for="authPassword">Password *</label>
+          <input type="password" id="authPassword" required minlength="6" placeholder="At least 6 characters" autocomplete="current-password">
+        </div>
+
+        <div id="authErrorMessage" class="auth-error hidden"></div>
+
+        <button type="submit" class="primary-btn auth-submit-btn" id="authSubmitBtn">
+          <span id="authSubmitText">Sign In</span>
+        </button>
+
+        <p class="auth-switch-text" id="authSwitchNote">
+          Don't have an account yet? <a href="#" id="authSwitchLink">Create one here</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
   <div id="toastNotification" class="toast hidden">Session saved successfully!</div>
 
