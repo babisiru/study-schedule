@@ -1,65 +1,92 @@
-# 📚 StudySync - Smart Study Schedule Web App
+# 📚 StudySync - Smart Study Schedule & Planner
 
-A clean, modern, pure front-end web application built with **HTML5, CSS3, and Vanilla JavaScript**. It runs entirely in your web browser with zero backend setup, no server required, and no dependencies to install.
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=github)](https://babisiru.github.io/study-schedule/)
+[![Supabase](https://img.shields.io/badge/Database-Supabase-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+
+> A modern, responsive study schedule & timetable web application designed for students of all majors. Built with pure front-end web technologies and connected to a secure cloud database with user authentication.
+
+🔗 **Live Website**: [https://babisiru.github.io/study-schedule/](https://babisiru.github.io/study-schedule/)
 
 ---
 
 ## 🌟 Key Features
 
-### 1. 📅 Live Today Dashboard
-- **Real-Time Clock & Date Tracking**: Automatically syncs with your local time and day.
-- **"Currently Happening" & "Up Next"**: Detects active study blocks in real time and highlights what to focus on right now.
-- **Daily Target Progress Ring & Bar**: Set your target daily study hours (e.g. 4.5 hrs) and monitor your percentage completion.
-- **One-Click Session Completion**: Mark study blocks done for today with visual dots and celebratory sound cues.
+### 1. 🔒 Student Portal & Cloud Authentication
+- **User Accounts**: Sign in or create a free account with email and password powered by **Supabase Auth**.
+- **Interactive Showcase**: Live interactive preview of the dashboard directly on the welcome screen.
+- **Private Data Isolation**: Each student's courses, timetable, tasks, and timer records are strictly private to their account.
+- **Cross-Device Sync**: Accessible from your laptop, tablet, or phone with real-time cloud persistence.
 
-### 2. 🗓️ Weekly Timetable (Monday – Sunday)
-- Complete 7-day schedule grid with color-coded course badges.
-- Filter schedule by specific days (e.g. Mon, Wed, Weekend) or by subject.
-- Easy modal to add, edit, or delete any recurring study session (start/end times, topics, notes).
+### 2. 📅 Today's Live Study Dashboard
+- **Real-Time Clock & Session Engine**: Detects the current time and shows what study session is **Currently Happening** or **Up Next**.
+- **Daily Target Progress**: Visual progress bar tracking completed study hours vs. daily targets.
+- **1-Click Completion & Celebration**: Check off completed sessions with celebratory sound cues and confetti bursts.
 
-### 3. ⏱️ Focus Timer (Pomodoro & Deep Work)
-- **Presets**: Standard Pomodoro (25 min), Deep Work (50 min), Short Break (5 min), and Long Break (15 min).
-- **Interactive SVG Circular Ring**: Smooth real-time countdown progress.
-- **Course Linking**: Completed sessions automatically log their minutes directly to the chosen course or subject.
-- **Synthesized Audio Bell**: Web Audio API generates clean completion chimes without needing external audio files.
+### 3. 🗓️ Weekly Timetable (Monday – Sunday)
+- Full 7-day grid showing all your scheduled classes and study blocks.
+- Filter by specific days of the week or by course/subject.
+- Easily add, edit, or delete any recurring study session with custom times, subjects, and notes.
 
-### 4. 📝 Tasks & Exam Deadlines
-- Track upcoming exams, quizzes, homework, and reading assignments.
-- Real-time countdown badges: *"Today!"*, *"Tomorrow"*, *"X days left"*, or *"Overdue"*.
-- Filter by status (*All*, *Pending*, *Completed*) or by subject.
+### 4. ⏱️ Focus Timer & Ambience Generator
+- **Flexible Modes**: Pomodoro (25m), Deep Work Sprint (50m), Short Break (5m), and Long Break (15m).
+- **Interactive SVG Circular Ring**: Smooth countdown progress with live digital clock.
+- **🎧 Focus Ambience Synthesizer**: Built-in background sounds generated live via the Web Audio API (zero external files):
+  - 🌧️ Gentle Rain
+  - 📻 Crisp Static / White Noise
+  - 🌊 Ocean Waves
+  - 🧘 Zen Harmonic Drone
+- **Subject Linking**: Log completed study minutes directly to the chosen course.
 
-### 5. 📊 Subjects & Study Analytics
-- Visual time distribution bars for the last 7 days.
-- Weekly goal progress per course.
-- Add/Edit custom courses with bespoke colors.
+### 5. 📝 Tasks & Exam Deadlines Tracker
+- Track homework, assignments, readings, and upcoming exam dates.
+- Real-time countdown badges: `Today!`, `Tomorrow`, `X days left`, or `Overdue`.
+- Filter by `All`, `Pending`, or `Completed`.
 
-### 6. 💾 100% Client-Side Local Storage & Export/Import
-- Automatic persistent storage in `localStorage`.
-- **JSON Backup Export**: Download your study schedule as a `.json` file at any time.
-- **JSON Import**: Restore your schedule across devices or browsers easily.
-- **Reset to Demo**: Easily restore sample timetable data with one click.
-- **Dark & Light Mode**: Seamless toggle with eye-friendly contrast.
+### 6. 📊 Subjects & Study Analytics
+- Visual distribution bar chart showing how much time you spent on each subject over the last 7 days.
+- Add and customize courses for any major/department with bespoke color tags and weekly hour goals.
 
----
-
-## 🚀 How to Run
-
-Because this app uses **only front-end tools**, running it is as simple as:
-
-### Option A: Open directly in your browser
-Double-click `index.html` in your file explorer, or right-click `index.html` and choose **Open with > Chrome / Edge / Firefox / Safari**.
-
-### Option B: Using VS Code or any Live Server
-If you use VS Code, you can right-click `index.html` and select **"Open with Live Server"**.
+### 7. 📱 Offline-First & Keyboard Friendly
+- **100% Offline Capability**: Runs smoothly even on Airplane Mode or without Wi-Fi using browser `localStorage` caching.
+- **Keyboard Shortcuts**:
+  - `Space`: Start / Pause Focus Timer
+  - `R`: Reset Focus Timer
+  - `Esc`: Close any active modal dialog
 
 ---
 
-## 📂 File Structure
+## 🛠️ Built With
+
+- **HTML5 & CSS3**: Semantic layout, modern slate & obsidian design system, responsive grid.
+- **Vanilla JavaScript**: State engine, Web Audio API synthesis, Canvas particle confetti.
+- **Supabase**: PostgreSQL cloud database & user authentication.
+- **GitHub Pages**: Automated CI/CD deployment.
+
+---
+
+## 🚀 Getting Started Locally
+
+Because this application is 100% client-side, running it locally requires zero installation:
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/babisiru/study-schedule.git
+   cd study-schedule
+   ```
+2. Open `index.html` directly in your browser:
+   - Double-click `index.html`, or
+   - Right-click and choose **Open with > Chrome / Edge / Firefox**.
+
+---
+
+## 📂 Project Structure
 
 ```
-study-schedule-app/
-├── index.html     # Semantic, accessible HTML5 layout and modal dialogs
-├── styles.css     # Modern CSS with dark/light themes, glassmorphism, responsive grid
-├── app.js         # State management, Pomodoro timer, audio engine & localStorage
-└── README.md      # Documentation & quick start guide
+study-schedule/
+├── index.html     # Semantic layout, login portal & modal dialogs
+├── styles.css     # Clean slate palette, interactive prototype styles, responsive rules
+├── app.js         # State management, Supabase integration, timer & audio engines
+└── README.md      # Project documentation & live links
 ```
